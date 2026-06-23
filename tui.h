@@ -4,3 +4,5 @@ int initTerminal(int fg_color, int bg_color);
 int updateTerminal(char** terminalMatrix, int maxX, int maxY);
 /* Cleans up ncurses TUI. Does NOT end the process */
 int killTerminal();
+/* Debugging purposes */
+void test_function();

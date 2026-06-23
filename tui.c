@@ -1,6 +1,27 @@
+#include "model.h"
 #include <ncurses.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+
+#define QUIT 'q'
+#define ROWS_PER_BOOK 3
+#define LIST_OCCUPATION 0.666f
+#define STATE_QUIT 1
+#define STATE_DEFAULT 2
+#define BORDER_CROP 2
+
+/* Updates the state given using provided input */
+int updateState(int8_t *state, char *input) {
+  switch (*input) {
+  case (QUIT): {
+    *state = STATE_QUIT;
+    break;
+  }
+  }
+  return 0;
+}
 
 int updateTerminal(char **terminalMatrix, int maxX, int maxY) {
   refresh();
@@ -30,4 +51,69 @@ int killTerminal() {
   attroff(COLOR_PAIR(1));
   endwin();
   return 0;
+}
+
+WINDOW *listPane(int lengthX, Book *bookList, int listLength) {
+	int pane_width = (int)lengthX * LIST_OCCUPATION;
+	int pane_height = listLength * ROWS_PER_BOOK + BORDER_CROP;
+  WINDOW *pane =
+      newpad(pane_height, pane_width);
+  for (int i = 0; i < listLength; i++) {
+    mvwprintw(pane, i * 3 + 1, BORDER_CROP , "%s", bookList[i].title);
+
+    // 2 genres if possible, 1 otherwise
+    if (bookList[i].num_genres >= 2) {
+      mvwprintw(pane, i * 3 + 2, BORDER_CROP, "genres: %s %s, rating: %d",
+                bookList[i].genres[0], bookList[i].genres[1],
+                bookList[i].rating);
+    } else {
+      mvwprintw(pane, i * 3 + 2, BORDER_CROP, "genre: %s, rating: %d",
+                bookList[i].genres[0], bookList[i].rating);
+    }
+
+    char dashes[pane_width - BORDER_CROP];
+    memset(dashes, '-', pane_width - BORDER_CROP - 1);
+    dashes[pane_width - BORDER_CROP - 1] = '\0';
+    mvwprintw(pane, i * 3 + 3, BORDER_CROP, "%s", dashes);
+  }
+  box(pane, 0, 0);
+  return pane;
+}
+
+void test_function() {
+  int maxX = 0, maxY = 0;
+  initTerminal(COLOR_WHITE, COLOR_BLACK);
+  refresh();
+  maxY = getmaxy(stdscr);
+  maxX = getmaxx(stdscr);
+  if (maxX < 30) {
+    printf("Terminal too small, please zoom out!\n");
+  }
+  char *genres1[] = {"Sci-Fi", "Adventure"};
+  char *genres2[] = {"Dystopian", "Political"};
+
+  Book bookList[] = {{.title = "Dune",
+                      .rating = 5,
+                      .genres = genres1,
+                      .num_genres = 2,
+                      .author = "Frank Herbert",
+                      .completion = 1,
+                      .length = 412,
+                      .review = "A classic."},
+                     {.title = "1984",
+                      .rating = 4,
+                      .genres = genres2,
+                      .num_genres = 2,
+                      .author = "George Orwell",
+                      .completion = 1,
+                      .length = 328,
+                      .review = "Chilling."}};
+  int listLength = 2;
+
+  WINDOW *pane = listPane(maxX, bookList, listLength);
+  int result = prefresh(pane, 0, 0, 0, 0, maxY, maxX * LIST_OCCUPATION + BORDER_CROP);
+  while (getch() != QUIT)
+    ;
+  killTerminal();
+  printf("%d\n", result);
 }

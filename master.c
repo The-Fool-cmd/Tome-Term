@@ -13,29 +13,7 @@
 #define STATE_PLAYING 1
 #define STATE_QUIT 2
 
-/* Updates the state given using provided input */
-int updateStateAndSpeed(int8_t *state, char *input) {
-  switch (*input) {
-  case (QUIT): {
-    *state = STATE_QUIT;
-    break;
-  }
-  }
-  return 0;
-}
-
 int main(int argc, char **argv) {
-  int8_t state = STATE_PAUSED;
-  char input = ' ';
-
-  initTerminal(COLOR_MAGENTA, COLOR_BLACK);
-
-  /* MAIN SIMULATION LOOP */
-  while (state != STATE_QUIT) {
-    input = getch();
-
-  }
-  // Termination procedure
-  killTerminal();
-  return 0;
+	test_function();
+	return 0;
 }
