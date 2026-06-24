@@ -23,16 +23,12 @@ int updateState(int8_t *state, char *input) {
   return 0;
 }
 
-int updateTerminal(char **terminalMatrix, int maxX, int maxY) {
-  refresh();
-  return 0;
-}
-
 int initTerminal(int fg_color, int bg_color) {
   initscr();
   noecho();
   cbreak();    // disables line buffering
   curs_set(0); // invisible cursor
+  //keypad(stdscr, TRUE);
   nodelay(stdscr, TRUE);
 
   if (has_colors() == false) {
@@ -53,28 +49,42 @@ int killTerminal() {
   return 0;
 }
 
+/* This places a book listing inside of the pane starting from a given row
+ * Currently assumes ROWS_PER_BOOK is 3
+ */
+int listElement(WINDOW *list, int startRow, int maxCols, Book *book) {
+  if (ROWS_PER_BOOK != 3) {
+    return 1;
+  }
+  mvwprintw(list, startRow, BORDER_CROP, "%s", book->title);
+
+  // 2 genres if possible, 1 otherwise
+  if (book->num_genres >= 2) {
+    mvwprintw(list, startRow + 1, BORDER_CROP, "genres: %s, %s; rating: %d",
+              book->genres[0], book->genres[1], book->rating);
+  } else {
+    mvwprintw(list, startRow + 1, BORDER_CROP, "genre: %s, rating: %d",
+              book->genres[0], book->rating);
+  }
+
+  char dashes[maxCols - BORDER_CROP];
+  memset(dashes, '-', maxCols - BORDER_CROP - 1);
+  dashes[maxCols - BORDER_CROP - 1] = '\0';
+  mvwprintw(list, startRow + 2, BORDER_CROP, "%s", dashes);
+
+  return 0;
+}
+
+/* This generates the entire list of books and places them in the pane */
 WINDOW *listPane(int lengthX, Book *bookList, int listLength) {
-	int pane_width = (int)lengthX * LIST_OCCUPATION;
-	int pane_height = listLength * ROWS_PER_BOOK + BORDER_CROP;
-  WINDOW *pane =
-      newpad(pane_height, pane_width);
+  int pane_width = (int)lengthX * LIST_OCCUPATION;
+  int pane_height = listLength * ROWS_PER_BOOK + BORDER_CROP;
+  WINDOW *pane = newpad(pane_height, pane_width);
   for (int i = 0; i < listLength; i++) {
-    mvwprintw(pane, i * 3 + 1, BORDER_CROP , "%s", bookList[i].title);
-
-    // 2 genres if possible, 1 otherwise
-    if (bookList[i].num_genres >= 2) {
-      mvwprintw(pane, i * 3 + 2, BORDER_CROP, "genres: %s %s, rating: %d",
-                bookList[i].genres[0], bookList[i].genres[1],
-                bookList[i].rating);
-    } else {
-      mvwprintw(pane, i * 3 + 2, BORDER_CROP, "genre: %s, rating: %d",
-                bookList[i].genres[0], bookList[i].rating);
+    int result = listElement(pane, 3 * i + 1, pane_width, &bookList[i]);
+    if (result != 0) {
+      return NULL;
     }
-
-    char dashes[pane_width - BORDER_CROP];
-    memset(dashes, '-', pane_width - BORDER_CROP - 1);
-    dashes[pane_width - BORDER_CROP - 1] = '\0';
-    mvwprintw(pane, i * 3 + 3, BORDER_CROP, "%s", dashes);
   }
   box(pane, 0, 0);
   return pane;
@@ -86,8 +96,10 @@ void test_function() {
   refresh();
   maxY = getmaxy(stdscr);
   maxX = getmaxx(stdscr);
-  if (maxX < 30) {
+  if (maxX < 64) {
+    killTerminal();
     printf("Terminal too small, please zoom out!\n");
+    return;
   }
   char *genres1[] = {"Sci-Fi", "Adventure"};
   char *genres2[] = {"Dystopian", "Political"};
@@ -111,9 +123,16 @@ void test_function() {
   int listLength = 2;
 
   WINDOW *pane = listPane(maxX, bookList, listLength);
-  int result = prefresh(pane, 0, 0, 0, 0, maxY, maxX * LIST_OCCUPATION + BORDER_CROP);
-  while (getch() != QUIT)
-    ;
+  if (pane == NULL) {
+    killTerminal();
+    printf("An error occured when creating the listPane. Did you change "
+           "ROWS_PER_BOOK?\n");
+  }
+  prefresh(pane, 0, 0, 0, 0, maxY, maxX * LIST_OCCUPATION + BORDER_CROP);
+  int input = getch();
+  while (input != QUIT) {
+    input = getch();
+  };
   killTerminal();
-  printf("%d\n", result);
+  printf("%d\n", input);
 }
