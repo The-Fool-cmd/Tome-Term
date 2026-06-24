@@ -1,9 +1,12 @@
-#include "model.h"
 #include <ncurses.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+
+#include "database.h"
+#include "model.h"
+#include "tui.h"
 
 #define QUIT 'q'
 #define ROWS_PER_BOOK 3
@@ -28,7 +31,7 @@ int initTerminal(int fg_color, int bg_color) {
   noecho();
   cbreak();    // disables line buffering
   curs_set(0); // invisible cursor
-  //keypad(stdscr, TRUE);
+  // keypad(stdscr, TRUE);
   nodelay(stdscr, TRUE);
 
   if (has_colors() == false) {
@@ -59,13 +62,8 @@ int listElement(WINDOW *list, int startRow, int maxCols, Book *book) {
   mvwprintw(list, startRow, BORDER_CROP, "%s", book->title);
 
   // 2 genres if possible, 1 otherwise
-  if (book->num_genres >= 2) {
-    mvwprintw(list, startRow + 1, BORDER_CROP, "genres: %s, %s; rating: %d",
-              book->genres[0], book->genres[1], book->rating);
-  } else {
-    mvwprintw(list, startRow + 1, BORDER_CROP, "genre: %s, rating: %d",
-              book->genres[0], book->rating);
-  }
+  mvwprintw(list, startRow + 1, BORDER_CROP, "genres: %s; rating: %d",
+            book->genres, book->rating);
 
   char dashes[maxCols - BORDER_CROP];
   memset(dashes, '-', maxCols - BORDER_CROP - 1);
@@ -90,7 +88,7 @@ WINDOW *listPane(int lengthX, Book *bookList, int listLength) {
   return pane;
 }
 
-void test_function() {
+void test_function(sqlite3* db) {
   int maxX = 0, maxY = 0;
   initTerminal(COLOR_WHITE, COLOR_BLACK);
   refresh();
@@ -101,13 +99,12 @@ void test_function() {
     printf("Terminal too small, please zoom out!\n");
     return;
   }
-  char *genres1[] = {"Sci-Fi", "Adventure"};
-  char *genres2[] = {"Dystopian", "Political"};
+  char *genres1 = "Sci-Fi, Adventure";
+  char *genres2 = "Dystopian, Political";
 
   Book bookList[] = {{.title = "Dune",
                       .rating = 5,
                       .genres = genres1,
-                      .num_genres = 2,
                       .author = "Frank Herbert",
                       .completion = 1,
                       .length = 412,
@@ -115,7 +112,6 @@ void test_function() {
                      {.title = "1984",
                       .rating = 4,
                       .genres = genres2,
-                      .num_genres = 2,
                       .author = "George Orwell",
                       .completion = 1,
                       .length = 328,
@@ -135,4 +131,5 @@ void test_function() {
   };
   killTerminal();
   printf("%d\n", input);
+  (void)db;
 }

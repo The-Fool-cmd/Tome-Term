@@ -2,7 +2,8 @@
 .direnv/*
 flake.lock
 
-# Object files
+# Build artifacts
+build/
 *.o
 
 # Libraries

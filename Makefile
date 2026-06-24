@@ -1,17 +1,20 @@
 CC      = gcc
-CFLAGS  = -Wall -Wextra -g
+CFLAGS  = -Wall -Wextra -g -Iinclude
 LDFLAGS = -lncurses -lsqlite3
 
 TARGET  = tome.bin
-SRCS    = $(wildcard *.c)
-OBJS    = $(SRCS:.c=.o)
+SRCS    = $(wildcard src/*.c)
+OBJS    = $(patsubst src/%.c,build/%.o,$(SRCS))
 
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-%.o: %.c
+build/%.o: src/%.c | build
 	$(CC) $(CFLAGS) -c $< -o $@
+
+build:
+	mkdir -p build
 
 .PHONY: clean
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -rf build $(TARGET)
