@@ -4,9 +4,9 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include "database.h"
-#include "model.h"
-#include "tui.h"
+#include "../include/database.h"
+#include "../include/model.h"
+#include "../include/tui.h"
 
 #define QUIT 'q'
 #define ROWS_PER_BOOK 3
@@ -59,9 +59,11 @@ int listElement(WINDOW *list, int startRow, int maxCols, Book *book) {
   if (ROWS_PER_BOOK != 3) {
     return 1;
   }
+  if (maxCols <= BORDER_CROP) {
+    return 1;
+  }
   mvwprintw(list, startRow, BORDER_CROP, "%s", book->title);
 
-  // 2 genres if possible, 1 otherwise
   mvwprintw(list, startRow + 1, BORDER_CROP, "genres: %s; rating: %d",
             book->genres, book->rating);
 
@@ -74,12 +76,12 @@ int listElement(WINDOW *list, int startRow, int maxCols, Book *book) {
 }
 
 /* This generates the entire list of books and places them in the pane */
-WINDOW *listPane(int lengthX, Book *bookList, int listLength) {
+WINDOW *listPane(int lengthX, Book **bookList, int listLength) {
   int pane_width = (int)lengthX * LIST_OCCUPATION;
   int pane_height = listLength * ROWS_PER_BOOK + BORDER_CROP;
   WINDOW *pane = newpad(pane_height, pane_width);
   for (int i = 0; i < listLength; i++) {
-    int result = listElement(pane, 3 * i + 1, pane_width, &bookList[i]);
+    int result = listElement(pane, 3 * i + 1, pane_width, bookList[i]);
     if (result != 0) {
       return NULL;
     }
@@ -102,27 +104,31 @@ void test_function(sqlite3* db) {
   char *genres1 = "Sci-Fi, Adventure";
   char *genres2 = "Dystopian, Political";
 
-  Book bookList[] = {{.title = "Dune",
-                      .rating = 5,
-                      .genres = genres1,
-                      .author = "Frank Herbert",
-                      .completion = 1,
-                      .length = 412,
-                      .review = "A classic."},
-                     {.title = "1984",
-                      .rating = 4,
-                      .genres = genres2,
-                      .author = "George Orwell",
-                      .completion = 1,
-                      .length = 328,
-                      .review = "Chilling."}};
-  int listLength = 2;
+  Book b1 = {.title = "Dune",
+             .rating = 5,
+             .genres = genres1,
+             .author = "Frank Herbert",
+             .completion = 1,
+             .length = 412,
+             .review = "A classic."};
+  Book b2 = {.title = "1984",
+             .rating = 4,
+             .genres = genres2,
+             .author = "George Orwell",
+             .completion = 1,
+             .length = 328,
+             .review = "Chilling."};
+  int listLength = 0;
+  insertDB(db, &b1);
+  insertDB(db, &b2);
+  Book **bookPtrs = readDB(db, &listLength);
 
-  WINDOW *pane = listPane(maxX, bookList, listLength);
+  WINDOW *pane = listPane(maxX, bookPtrs, listLength);
   if (pane == NULL) {
     killTerminal();
     printf("An error occured when creating the listPane. Did you change "
            "ROWS_PER_BOOK?\n");
+    return;
   }
   prefresh(pane, 0, 0, 0, 0, maxY, maxX * LIST_OCCUPATION + BORDER_CROP);
   int input = getch();

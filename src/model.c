@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include "model.h"
+#include "../include/model.h"
 
 void freeBook(Book* book) {
 	free(book->title);
