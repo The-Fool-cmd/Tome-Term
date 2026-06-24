@@ -130,7 +130,7 @@ void test_function(sqlite3* db) {
            "ROWS_PER_BOOK?\n");
     return;
   }
-  prefresh(pane, 0, 0, 0, 0, maxY, maxX * LIST_OCCUPATION + BORDER_CROP);
+  prefresh(pane, 0, 0, 0, 0, maxY-1, maxX * LIST_OCCUPATION + BORDER_CROP);
   int input = getch();
   while (input != QUIT) {
     input = getch();

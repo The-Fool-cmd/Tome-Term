@@ -2,6 +2,7 @@
 #define MODEL_H
 
 typedef struct {
+	int id;
 	char* title;
 	char* genres;
 	int length;
