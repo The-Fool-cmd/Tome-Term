@@ -77,24 +77,26 @@ int listElement(WINDOW *list, int startRow, int maxCols, Book *book) {
 }
 
 void highlightList(WINDOW *win, int prev_idx, int curr_idx, int rows_per_item) {
+  int inner_width = getmaxx(win) - 2;
   if (prev_idx >= 0) {
     int prev_start = prev_idx * rows_per_item + 1;
     for (int r = 0; r < rows_per_item; r++) {
-      mvwchgat(win, prev_start + r, 0, -1, A_NORMAL, 0, NULL);
+      mvwchgat(win, prev_start + r, 1, inner_width, A_NORMAL, 0, NULL);
     }
   }
   if (curr_idx >= 0) {
     int curr_start = curr_idx * rows_per_item + 1;
     for (int r = 0; r < rows_per_item; r++) {
-      mvwchgat(win, curr_start + r, 0, -1, A_REVERSE, 0, NULL);
+      mvwchgat(win, curr_start + r, 1, inner_width, A_REVERSE, 0, NULL);
     }
   }
 }
 
 /* This generates the entire list of books and places them in the pane */
-WINDOW *listPane(int lengthX, Book **bookList, int listLength) {
+WINDOW *listPane(int lengthX, int minHeight, Book **bookList, int listLength) {
   int pane_width = (int)lengthX * LIST_OCCUPATION;
-  int pane_height = listLength * ROWS_PER_BOOK + BORDER_CROP;
+  int content_height = listLength * ROWS_PER_BOOK + BORDER_CROP;
+  int pane_height = content_height + minHeight;
   WINDOW *pane = newpad(pane_height, pane_width);
   for (int i = 0; i < listLength; i++) {
     int result = listElement(pane, 3 * i + 1, pane_width, bookList[i]);
@@ -159,6 +161,14 @@ WINDOW *displayWin(int lengthX, int winHeight, Book *book) {
   return win;
 }
 
+void updateDisplayWin(WINDOW *win, int rows, int cols, Book *book) {
+  wclear(win);
+  box(win, 0, 0);
+  displayContents(win, rows - BORDER_CROP, cols - BORDER_CROP, book);
+  wrefresh(win);
+  return;
+}
+
 void listLoop(sqlite3 *db) {
   int maxX = 0, maxY = 0;
   initTerminal(COLOR_WHITE, COLOR_BLACK);
@@ -175,6 +185,7 @@ void listLoop(sqlite3 *db) {
     printf("Terminal not tall enough, please zoom out!\n");
     return;
   }
+  /*
   char *genres1 = "Sci-Fi, Adventure";
   char *genres2 = "Dystopian, Political";
 
@@ -192,14 +203,13 @@ void listLoop(sqlite3 *db) {
              .author = "George Orwell",
              .completion = 1,
              .length = 328,
-             .review = "Chilling."};
+             .review = "Chilling. TESTING DEBUGGING DEBUGGING TESTING DEBUGGING
+  DEBUGGING"}; insertDB(db, &b1); insertDB(db, &b2);
+  */
   int listLength = 0;
-  insertDB(db, &b1);
-  insertDB(db, &b2);
   Book **bookPtrs = readDB(db, &listLength);
 
-  WINDOW *leftPane = listPane(maxX, bookPtrs, listLength);
-  WINDOW *rightPane = displayWin(maxX, maxY, &b1);
+  WINDOW *leftPane = listPane(maxX, maxY, bookPtrs, listLength);
   if (leftPane == NULL) {
     killTerminal();
     printf("An error occured when creating the listPane. Did you change "
@@ -211,6 +221,7 @@ void listLoop(sqlite3 *db) {
   highlightList(leftPane, prev_idx, curr_idx, ROWS_PER_BOOK);
   prefresh(leftPane, curr_idx * ROWS_PER_BOOK, 0, 0, 0, maxY - 1,
            maxX * LIST_OCCUPATION + BORDER_CROP);
+  WINDOW *rightPane = displayWin(maxX, maxY, bookPtrs[curr_idx]);
   wrefresh(rightPane);
   int input = getch();
   while (input != QUIT) {
@@ -226,10 +237,11 @@ void listLoop(sqlite3 *db) {
       highlightList(leftPane, prev_idx, curr_idx, ROWS_PER_BOOK);
       prefresh(leftPane, curr_idx * ROWS_PER_BOOK, 0, 0, 0, maxY - 1,
                maxX * LIST_OCCUPATION + BORDER_CROP);
+      updateDisplayWin(rightPane, maxX, maxY, bookPtrs[curr_idx]);
       break;
     }
     case (KEY_DOWN): {
-      if (curr_idx == listLength) {
+      if (curr_idx == listLength - 1) {
         break;
       }
       prev_idx = curr_idx;
@@ -237,6 +249,7 @@ void listLoop(sqlite3 *db) {
       highlightList(leftPane, prev_idx, curr_idx, ROWS_PER_BOOK);
       prefresh(leftPane, curr_idx * ROWS_PER_BOOK, 0, 0, 0, maxY - 1,
                maxX * LIST_OCCUPATION + BORDER_CROP);
+      updateDisplayWin(rightPane, maxX, maxY, bookPtrs[curr_idx]);
       break;
     }
     }
