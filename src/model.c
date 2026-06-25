@@ -20,6 +20,6 @@ Book *createBook() {
   book->id = 0;
   book->rating = 0;
   book->length = 0;
-  book->rating = 0;
+  book->completion = 0;
   return book;
 }
