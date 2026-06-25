@@ -32,7 +32,7 @@ int initTerminal(int fg_color, int bg_color) {
   noecho();
   cbreak();    // disables line buffering
   curs_set(0); // invisible cursor
-  // keypad(stdscr, TRUE);
+  keypad(stdscr, TRUE);
   nodelay(stdscr, TRUE);
 
   if (has_colors() == false) {
@@ -74,6 +74,21 @@ int listElement(WINDOW *list, int startRow, int maxCols, Book *book) {
   mvwprintw(list, startRow + 2, BORDER_CROP, "%s", dashes);
 
   return 0;
+}
+
+void highlightList(WINDOW *win, int prev_idx, int curr_idx, int rows_per_item) {
+  if (prev_idx >= 0) {
+    int prev_start = prev_idx * rows_per_item + 1;
+    for (int r = 0; r < rows_per_item; r++) {
+      mvwchgat(win, prev_start + r, 0, -1, A_NORMAL, 0, NULL);
+    }
+  }
+  if (curr_idx >= 0) {
+    int curr_start = curr_idx * rows_per_item + 1;
+    for (int r = 0; r < rows_per_item; r++) {
+      mvwchgat(win, curr_start + r, 0, -1, A_REVERSE, 0, NULL);
+    }
+  }
 }
 
 /* This generates the entire list of books and places them in the pane */
@@ -119,7 +134,8 @@ int displayContents(WINDOW *win, int rows, int cols, Book *book) {
       col = 1;
       if (row > rows) {
         int ellipsis_col = prev_end_col - 3;
-        if (ellipsis_col < 1) ellipsis_col = 1;
+        if (ellipsis_col < 1)
+          ellipsis_col = 1;
         mvwprintw(win, prev_row, ellipsis_col, "...");
         free(copy);
         return 1;
@@ -143,7 +159,7 @@ WINDOW *displayWin(int lengthX, int winHeight, Book *book) {
   return win;
 }
 
-void test_function(sqlite3 *db) {
+void listLoop(sqlite3 *db) {
   int maxX = 0, maxY = 0;
   initTerminal(COLOR_WHITE, COLOR_BLACK);
   refresh();
@@ -190,12 +206,40 @@ void test_function(sqlite3 *db) {
            "ROWS_PER_BOOK?\n");
     return;
   }
-  prefresh(leftPane, 0, 0, 0, 0, maxY - 1,
+  int prev_idx = -1;
+  int curr_idx = 0;
+  highlightList(leftPane, prev_idx, curr_idx, ROWS_PER_BOOK);
+  prefresh(leftPane, curr_idx * ROWS_PER_BOOK, 0, 0, 0, maxY - 1,
            maxX * LIST_OCCUPATION + BORDER_CROP);
   wrefresh(rightPane);
   int input = getch();
   while (input != QUIT) {
     input = getch();
+    // NEED TO UPDATE THE DISPLAY WINDOW AS WELL
+    switch (input) {
+    case (KEY_UP): {
+      if (curr_idx == 0) {
+        break;
+      }
+      prev_idx = curr_idx;
+      curr_idx--;
+      highlightList(leftPane, prev_idx, curr_idx, ROWS_PER_BOOK);
+      prefresh(leftPane, curr_idx * ROWS_PER_BOOK, 0, 0, 0, maxY - 1,
+               maxX * LIST_OCCUPATION + BORDER_CROP);
+      break;
+    }
+    case (KEY_DOWN): {
+      if (curr_idx == listLength) {
+        break;
+      }
+      prev_idx = curr_idx;
+      curr_idx++;
+      highlightList(leftPane, prev_idx, curr_idx, ROWS_PER_BOOK);
+      prefresh(leftPane, curr_idx * ROWS_PER_BOOK, 0, 0, 0, maxY - 1,
+               maxX * LIST_OCCUPATION + BORDER_CROP);
+      break;
+    }
+    }
   };
   killTerminal();
   printf("%d\n", input);

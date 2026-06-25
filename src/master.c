@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "Failed to initialise database.\n");
 		return 1;
 	}
-	test_function(db);
+	listLoop(db);
 	closeDB(db);
 	return 0;
 }
