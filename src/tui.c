@@ -1,6 +1,7 @@
 #include <ncurses.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 
@@ -90,7 +91,59 @@ WINDOW *listPane(int lengthX, Book **bookList, int listLength) {
   return pane;
 }
 
-void test_function(sqlite3* db) {
+int displayContents(WINDOW *win, int rows, int cols, Book *book) {
+  mvwprintw(win, 0, 1, "Title: %s", book->title);
+  mvwprintw(win, 1, 1, "Author: %s", book->author);
+  mvwprintw(win, 2, 1, "Genres: %s", book->genres);
+  mvwprintw(win, 3, 1, "Length: %d", book->length);
+  mvwprintw(win, 4, 1, "Rating: %d/10", book->rating);
+  mvwprintw(win, 5, 1, "Completion: %d%%", book->completion);
+
+  int row = 6;
+  int col = 1;
+  mvwprintw(win, row, col, "Review: ");
+  col += 8;
+
+  int prev_row = row;
+  int prev_end_col = col;
+
+  char *copy = strdup(book->review);
+  if (copy == NULL) {
+    return 0;
+  }
+  char *word = strtok(copy, " \t\n");
+  while (word != NULL) {
+    int word_len = (int)strlen(word);
+    if (col > 1 && col + word_len - 1 > cols) {
+      row++;
+      col = 1;
+      if (row > rows) {
+        int ellipsis_col = prev_end_col - 3;
+        if (ellipsis_col < 1) ellipsis_col = 1;
+        mvwprintw(win, prev_row, ellipsis_col, "...");
+        free(copy);
+        return 1;
+      }
+    }
+    prev_row = row;
+    prev_end_col = col + word_len;
+    mvwprintw(win, row, col, "%s ", word);
+    col += word_len + 1;
+    word = strtok(NULL, " \t\n");
+  }
+  free(copy);
+  return 0;
+}
+
+WINDOW *displayWin(int lengthX, int winHeight, Book *book) {
+  int winWidth = (int)lengthX * (1 - LIST_OCCUPATION);
+  WINDOW *win = newwin(winHeight, winWidth, 0, (int)lengthX * LIST_OCCUPATION);
+  box(win, 0, 0);
+  displayContents(win, winHeight - BORDER_CROP, winWidth - BORDER_CROP, book);
+  return win;
+}
+
+void test_function(sqlite3 *db) {
   int maxX = 0, maxY = 0;
   initTerminal(COLOR_WHITE, COLOR_BLACK);
   refresh();
@@ -98,7 +151,12 @@ void test_function(sqlite3* db) {
   maxX = getmaxx(stdscr);
   if (maxX < 64) {
     killTerminal();
-    printf("Terminal too small, please zoom out!\n");
+    printf("Terminal not wide enough, please zoom out!\n");
+    return;
+  }
+  if (maxY < 32) {
+    killTerminal();
+    printf("Terminal not tall enough, please zoom out!\n");
     return;
   }
   char *genres1 = "Sci-Fi, Adventure";
@@ -110,7 +168,8 @@ void test_function(sqlite3* db) {
              .author = "Frank Herbert",
              .completion = 1,
              .length = 412,
-             .review = "A classic."};
+             .review =
+                 "A classic. TESTING DEBUGGING DEBUGGING DEBUGGING DEBUGGING"};
   Book b2 = {.title = "1984",
              .rating = 4,
              .genres = genres2,
@@ -123,14 +182,17 @@ void test_function(sqlite3* db) {
   insertDB(db, &b2);
   Book **bookPtrs = readDB(db, &listLength);
 
-  WINDOW *pane = listPane(maxX, bookPtrs, listLength);
-  if (pane == NULL) {
+  WINDOW *leftPane = listPane(maxX, bookPtrs, listLength);
+  WINDOW *rightPane = displayWin(maxX, maxY, &b1);
+  if (leftPane == NULL) {
     killTerminal();
     printf("An error occured when creating the listPane. Did you change "
            "ROWS_PER_BOOK?\n");
     return;
   }
-  prefresh(pane, 0, 0, 0, 0, maxY-1, maxX * LIST_OCCUPATION + BORDER_CROP);
+  prefresh(leftPane, 0, 0, 0, 0, maxY - 1,
+           maxX * LIST_OCCUPATION + BORDER_CROP);
+  wrefresh(rightPane);
   int input = getch();
   while (input != QUIT) {
     input = getch();
