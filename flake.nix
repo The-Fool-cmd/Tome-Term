@@ -1,5 +1,5 @@
 {
-  description = "Falling sand sim in C with ncurses";
+  description = "Terminal-based personal book library in C with ncurses and SQLite";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";

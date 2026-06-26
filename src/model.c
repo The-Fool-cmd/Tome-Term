@@ -1,4 +1,9 @@
+/*
+ * model.c - Lifecycle helpers for the Book record.
+ */
+
 #include <stdlib.h>
+#include <string.h>
 
 #include "../include/model.h"
 
@@ -13,10 +18,10 @@ void freeBook(Book *book) {
 
 Book *createBook() {
   Book *book = (Book *)calloc(1, sizeof(Book));
-  book->title = NULL;
-  book->genres = NULL;
-  book->author = NULL;
-  book->review = NULL;
+  book->title = strdup("");
+  book->genres = strdup("");
+  book->author = strdup("");
+  book->review = strdup("");
   book->id = 0;
   book->rating = 0;
   book->length = 0;

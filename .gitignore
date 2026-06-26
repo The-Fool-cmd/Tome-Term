@@ -1,10 +1,10 @@
 # nixos
 .direnv/*
-flake.lock
 
 # Build artifacts
 build/
 *.o
+*.bin
 
 # Libraries
 *.lib

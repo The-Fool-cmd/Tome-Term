@@ -1,3 +1,11 @@
+/*
+ * database.c - SQLite persistence layer.
+ *
+ * Each write follows the prepare -> bind -> step -> finalize lifecycle. The
+ * read paths first run a COUNT(*) to size the result array, then a SELECT to
+ * populate it; collect_books owns the SELECT statement and finalizes it.
+ */
+
 #include <errno.h>
 #include <limits.h>
 #include <sqlite3.h>
@@ -8,6 +16,7 @@
 
 #include "../include/database.h"
 
+/* Upper bound on a LIKE pattern built for genre filtering. */
 #define MAX_PATTERN_LENGTH 256
 
 int create_tableDB(sqlite3 **db) {
@@ -131,6 +140,8 @@ int removeDB(sqlite3 *database, int id) {
   return 0;
 }
 
+/* Duplicates a text column into a freshly owned string (NULL if the column is
+ * NULL), so a Book never aliases SQLite's internal row buffers. */
 static char *col_strdup(sqlite3_stmt *stmt, int col) {
   const char *text = (const char *)sqlite3_column_text(stmt, col);
   return text ? strdup(text) : NULL;
@@ -147,6 +158,14 @@ static Book **collect_books(sqlite3_stmt *stmt, int listLength) {
   int i = 0;
   while (sqlite3_step(stmt) == SQLITE_ROW) {
     bookList[i] = (Book *)calloc(1, sizeof(Book));
+    if (bookList[i] == NULL) {
+      for (int j = 0; j < i; j++) {
+        freeBook(bookList[j]);
+      }
+      free(bookList);
+      sqlite3_finalize(stmt);
+      return NULL;
+    }
     bookList[i]->id         = sqlite3_column_int(stmt, 0);
     bookList[i]->title      = col_strdup(stmt, 1);
     bookList[i]->author     = col_strdup(stmt, 2);
@@ -192,6 +211,8 @@ Book **readDB(sqlite3 *database, int *listLength) {
   return collect_books(list_statement, *listLength);
 }
 
+/* Binds the single placeholder of a filter query: a wrapped %value% pattern
+ * for genre LIKE matching, or the integer threshold for rating/length. */
 static void bind_filter(sqlite3_stmt *stmt, enum filterType filter,
                         char *filter_value) {
   char pattern[MAX_PATTERN_LENGTH];

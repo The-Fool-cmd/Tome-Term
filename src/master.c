@@ -1,3 +1,8 @@
+/*
+ * master.c - Program entry point. Opens the database, hands control to the
+ * TUI event loop, and tears the database down on exit.
+ */
+
 #include <sqlite3.h>
 #include <stdio.h>
 
