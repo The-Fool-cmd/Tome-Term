@@ -306,21 +306,12 @@ void listLoop(sqlite3 *db) {
            "ROWS_PER_BOOK?\n");
     return;
   }
-  if (listLength == 0) {
-    refreshLeft(leftPane, 0);
-    drawStatusBar(STATUSBAR_LIST);
-    while (getch() != QUIT)
-      ;
-    delwin(leftPane);
-    free(bookPtrs);
-    killTerminal();
-    return;
-  }
   int prev_idx = -1;
   int curr_idx = 0;
-  highlightList(leftPane, prev_idx, curr_idx, ROWS_PER_BOOK);
-  refreshLeft(leftPane, curr_idx);
-  WINDOW *rightPane = displayWin(maxX, pane_rows, bookPtrs[curr_idx]);
+  if (listLength > 0)
+    highlightList(leftPane, prev_idx, curr_idx, ROWS_PER_BOOK);
+  refreshLeft(leftPane, listLength > 0 ? curr_idx : 0);
+  WINDOW *rightPane = displayWin(maxX, pane_rows, listLength > 0 ? bookPtrs[curr_idx] : NULL);
   wrefresh(rightPane);
   drawStatusBar(STATUSBAR_LIST);
   int running = 1;
